@@ -1,0 +1,5 @@
+{
+  "name": "Lumina RAG Agent",
+  "description": "A high-performance Retrieval-Augmented Generation (RAG) agent that allows you to upload documents and chat with them using Gemini 3 Flash. Featuring in-memory semantic retrieval and a professional chat interface.",
+  "requestFramePermissions": []
+}
