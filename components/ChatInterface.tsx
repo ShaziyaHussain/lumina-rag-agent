@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../types';
 
@@ -10,6 +9,7 @@ interface ChatInterfaceProps {
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, isLoading }) => {
   const [input, setInput] = useState('');
+  const [expandedSources, setExpandedSources] = useState<Record<string, string[]>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,6 +24,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
       onSendMessage(input.trim());
       setInput('');
     }
+  };
+
+  const toggleSource = (messageId: string, docName: string) => {
+    setExpandedSources(prev => {
+      const current = prev[messageId] ?? [];
+      const next = current.includes(docName)
+        ? current.filter(name => name !== docName)
+        : [...current, docName];
+
+      return {
+        ...prev,
+        [messageId]: next,
+      };
+    });
   };
 
   return (
@@ -96,13 +110,41 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
                 </div>
                 
                 {msg.sources && msg.sources.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {Array.from(new Set(msg.sources.map(s => s.docName))).map((docName, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800/50 border border-slate-700 text-[10px] text-slate-400">
-                        <i className="fas fa-quote-right text-[8px]"></i>
-                        {docName}
-                      </span>
-                    ))}
+                  <div className="mt-2 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from(new Set(msg.sources.map(s => s.docName))).map((docName, idx) => {
+                        const relatedSources = msg.sources.filter(source => source.docName === docName);
+                        const isExpanded = (expandedSources[msg.id] ?? []).includes(docName);
+
+                        return (
+                          <div key={`${msg.id}-${docName}`} className="w-full">
+                            <button
+                              type="button"
+                              onClick={() => toggleSource(msg.id, docName)}
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800/50 border border-slate-700 text-[10px] text-slate-300 hover:bg-slate-700 transition-colors"
+                            >
+                              <i className={`fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[8px]`}></i>
+                              {docName}
+                            </button>
+
+                            {isExpanded && (
+                              <div className="mt-2 rounded-xl border border-slate-700 bg-slate-900/80 p-3 space-y-3">
+                                {relatedSources.map((source, sourceIdx) => (
+                                  <div key={`${docName}-${sourceIdx}`} className="rounded-lg bg-slate-800/40 border border-slate-800 p-2">
+                                    <p className="mb-1 text-[9px] uppercase tracking-wide text-slate-400">
+                                      Source excerpt
+                                    </p>
+                                    <p className="text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap">
+                                      {source.text}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 
@@ -142,7 +184,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
             onChange={(e) => setInput(e.target.value)}
             placeholder="Search knowledge or ask a question..."
             disabled={isLoading}
-            className="w-full bg-slate-900 border border-slate-800 text-white rounded-2xl px-6 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 transition-all placeholder:text-slate-600"
+            className="w-full bg-slate-900 border border-slate-800 text-white rounded-2xl px-6 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600 transition-all"
           />
           <button
             type="submit"
