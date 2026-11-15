@@ -112,20 +112,17 @@ To work with the source-citations changes, check out the `feature/source-citatio
 
 ## Environment configuration
 
-Create a `.env.local` file in the project root and set your own key:
+Copy `.env.example` to `.env.local` in the project root.
 
-```dotenv
-GEMINI_API_KEY=replace_with_your_own_key
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
 ```
 
-Vite reads `GEMINI_API_KEY` and maps it to the API key used by the Gemini client. Do not commit `.env.local`, share a real key, or put a real key in a README or example file.
+Replace the placeholder with your own Gemini API key.
 
-The repository does not currently include a `.env.example`. The companion template proposed for this documentation is:
-
-```dotenv
-# Copy to .env.local and replace with your own Gemini API key.
-GEMINI_API_KEY=your_gemini_api_key_here
-```
+Vite reads `GEMINI_API_KEY` and maps it to the API key used by the Gemini client. Keep your real key in `.env.local`; do not commit or share that file.
 
 > **Security:** Vite's current configuration injects this value into browser-side code. This is suitable only for local experimentation with a key you are willing to expose in the client. A production deployment should use a server-side design that keeps provider credentials out of the browser; that is not implemented in this repository.
 
