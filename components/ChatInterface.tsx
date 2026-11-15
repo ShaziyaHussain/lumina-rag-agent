@@ -10,6 +10,8 @@ interface ChatInterfaceProps {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, isLoading }) => {
   const [input, setInput] = useState('');
   const [expandedSources, setExpandedSources] = useState<Record<string, string[]>>({});
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [copyErrorId, setCopyErrorId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,11 +35,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
         ? current.filter(name => name !== docName)
         : [...current, docName];
 
-      return {
-        ...prev,
-        [messageId]: next,
-      };
+      return { ...prev, [messageId]: next };
     });
+  };
+
+  const handleCopyAnswer = async (message: ChatMessage) => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopiedMessageId(message.id);
+      setCopyErrorId(null);
+      window.setTimeout(() => {
+        setCopiedMessageId(current => current === message.id ? null : current);
+      }, 2000);
+    } catch {
+      setCopyErrorId(message.id);
+      setCopiedMessageId(null);
+      window.setTimeout(() => {
+        setCopyErrorId(current => current === message.id ? null : current);
+      }, 3000);
+    }
   };
 
   return (
@@ -59,7 +75,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
       </header>
 
       {/* Messages */}
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar pb-32"
       >
@@ -76,7 +92,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
             </div>
             <div className="grid grid-cols-2 gap-3 w-full">
               {["Summarize the main points", "Find specific details", "Compare documents", "Draft an overview"].map((hint, i) => (
-                <button 
+                <button
                   key={i}
                   onClick={() => onSendMessage(hint)}
                   className="px-4 py-3 bg-slate-900/50 border border-slate-800 rounded-xl text-xs text-slate-300 hover:bg-slate-800 hover:border-slate-700 transition-all text-left"
@@ -88,73 +104,113 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
           </div>
         )}
 
-        {messages.map((msg) => (
-          <div 
-            key={msg.id} 
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className={`max-w-[80%] flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`
-                flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-1
-                ${msg.role === 'user' ? 'bg-blue-600' : 'bg-slate-800 border border-slate-700'}
-              `}>
-                <i className={`fas ${msg.role === 'user' ? 'fa-user' : 'fa-magic'} text-xs text-white`}></i>
-              </div>
-              
-              <div className="space-y-2">
+        {messages.map((msg) => {
+          const sourceNames = Array.from(new Set((msg.sources ?? []).map(source => source.docName)));
+
+          return (
+            <div
+              key={msg.id}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`max-w-[80%] flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                 <div className={`
-                  p-4 rounded-2xl text-sm leading-relaxed
-                  ${msg.role === 'user' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10' : 'bg-slate-900 text-slate-200 border border-slate-800'}
+                  flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-1
+                  ${msg.role === 'user' ? 'bg-blue-600' : 'bg-slate-800 border border-slate-700'}
                 `}>
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  <i className={`fas ${msg.role === 'user' ? 'fa-user' : 'fa-magic'} text-xs text-white`}></i>
                 </div>
-                
-                {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {Array.from(new Set(msg.sources.map(s => s.docName))).map((docName, idx) => {
-                        const relatedSources = msg.sources.filter(source => source.docName === docName);
-                        const isExpanded = (expandedSources[msg.id] ?? []).includes(docName);
 
-                        return (
-                          <div key={`${msg.id}-${docName}`} className="w-full">
-                            <button
-                              type="button"
-                              onClick={() => toggleSource(msg.id, docName)}
-                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800/50 border border-slate-700 text-[10px] text-slate-300 hover:bg-slate-700 transition-colors"
-                            >
-                              <i className={`fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[8px]`}></i>
-                              {docName}
-                            </button>
-
-                            {isExpanded && (
-                              <div className="mt-2 rounded-xl border border-slate-700 bg-slate-900/80 p-3 space-y-3">
-                                {relatedSources.map((source, sourceIdx) => (
-                                  <div key={`${docName}-${sourceIdx}`} className="rounded-lg bg-slate-800/40 border border-slate-800 p-2">
-                                    <p className="mb-1 text-[9px] uppercase tracking-wide text-slate-400">
-                                      Source excerpt
-                                    </p>
-                                    <p className="text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap">
-                                      {source.text}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                <div className="space-y-2 min-w-0">
+                  <div className={`
+                    p-4 rounded-2xl text-sm leading-relaxed
+                    ${msg.role === 'user' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10' : 'bg-slate-900 text-slate-200 border border-slate-800'}
+                  `}>
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
                   </div>
-                )}
-                
-                <p className="text-[10px] text-slate-500 font-medium px-2">
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+
+                  {msg.role === 'assistant' && (
+                    <div className="flex items-center gap-2 px-1">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyAnswer(msg)}
+                        aria-label={copiedMessageId === msg.id ? 'Answer copied' : 'Copy answer'}
+                        title="Copy answer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/70 px-2.5 py-1.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                      >
+                        <i className={`fas ${copiedMessageId === msg.id ? 'fa-check text-emerald-400' : 'fa-copy'} text-[10px]`}></i>
+                        {copiedMessageId === msg.id ? 'Copied' : 'Copy answer'}
+                      </button>
+                      {copyErrorId === msg.id && (
+                        <span role="status" className="text-[10px] text-rose-400">
+                          Could not copy. Check clipboard permissions and try again.
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {msg.sources && msg.sources.length > 0 && (
+                    <section className="mt-3 rounded-xl border border-slate-800 bg-slate-900/50 p-3" aria-label="Answer sources">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-500/10 text-blue-300">
+                          <i className="fas fa-book-open text-[10px]"></i>
+                        </span>
+                        <div>
+                          <h3 className="text-[11px] font-semibold text-slate-200">Sources</h3>
+                          <p className="text-[10px] text-slate-500">Review the document excerpts used for this answer</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {sourceNames.map((docName) => {
+                          const relatedSources = msg.sources?.filter(source => source.docName === docName) ?? [];
+                          const isExpanded = (expandedSources[msg.id] ?? []).includes(docName);
+
+                          return (
+                            <div key={`${msg.id}-${docName}`} className="overflow-hidden rounded-lg border border-slate-800 bg-slate-950/60">
+                              <button
+                                type="button"
+                                onClick={() => toggleSource(msg.id, docName)}
+                                aria-expanded={isExpanded}
+                                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/60"
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <i className="far fa-file-alt flex-shrink-0 text-xs text-blue-300"></i>
+                                  <span className="truncate text-xs font-medium text-slate-200">{docName}</span>
+                                  <span className="flex-shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400">
+                                    {relatedSources.length} {relatedSources.length === 1 ? 'excerpt' : 'excerpts'}
+                                  </span>
+                                </span>
+                                <i className={`fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} flex-shrink-0 text-[9px] text-slate-500`}></i>
+                              </button>
+
+                              {isExpanded && (
+                                <div className="space-y-2 border-t border-slate-800 p-3">
+                                  {relatedSources.map((source, sourceIdx) => (
+                                    <blockquote key={`${docName}-${sourceIdx}`} className="relative rounded-lg border-l-2 border-blue-500/70 bg-slate-900 px-3 py-2.5">
+                                      <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-blue-300/80">
+                                        Retrieved passage {sourceIdx + 1}
+                                      </p>
+                                      <p className="text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap">
+                                        {source.text}
+                                      </p>
+                                    </blockquote>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+
+                  <p className="text-[10px] text-slate-500 font-medium px-2">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {isLoading && (
           <div className="flex justify-start">
