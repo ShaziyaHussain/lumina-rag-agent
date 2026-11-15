@@ -177,10 +177,6 @@ Possible next steps, not features currently implemented:
 - Add automated tests for chunking, retrieval, and UI interactions.
 - Add optional persistence for documents and conversations.
 
-## Contributing
-
-Contributions are welcome. For a focused change, create a branch, describe the change in a pull request, and run `npm run build` before submitting. If you add tests or other project checks, include their commands in the pull request description.
-
 ## License
 
 No `LICENSE` file is present in the repository. The project's reuse and distribution terms are therefore not specified. Add a license file if you want to grant permissions for others to use or modify this project.
