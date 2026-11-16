@@ -14,6 +14,7 @@ export interface Chunk {
   documentId: string;
   text: string;
   startIndex: number;
+  pageNumber?: number;
 }
 
 export interface ChatMessage {
@@ -21,7 +22,11 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
-  sources?: { docName: string; text: string }[];
+  sources?: {
+    docName: string;
+    text: string;
+    pageNumber?: number;
+  }[];
 }
 
 export interface SearchResult {
