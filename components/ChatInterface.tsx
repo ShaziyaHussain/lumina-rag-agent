@@ -188,6 +188,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, onSendMessage, 
                                     <blockquote key={`${docName}-${sourceIdx}`} className="relative rounded-lg border-l-2 border-blue-500/70 bg-slate-900 px-3 py-2.5">
                                       <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-blue-300/80">
                                         Retrieved passage {sourceIdx + 1}
+                                        {source.pageNumber !== undefined && (
+                                          <span className="ml-2 text-emerald-400">
+                                            • Page {source.pageNumber}
+                                          </span>
+                                        )}
                                       </p>
                                       <p className="text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap">
                                         {source.text}
