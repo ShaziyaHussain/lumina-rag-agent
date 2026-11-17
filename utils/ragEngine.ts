@@ -58,6 +58,11 @@ export const createPageChunks = (
   const chunks: Chunk[] = [];
 
   pages.forEach(page => {
+    // Ignore empty or whitespace-only PDF pages.
+    if (!page.text.trim()) {
+      return;
+    }
+
     const pageChunks = createChunks(
       page.text,
       documentId,
