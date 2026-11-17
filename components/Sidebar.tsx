@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Document } from '../types';
 
@@ -97,11 +96,11 @@ const Sidebar: React.FC<SidebarProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="group relative bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 rounded-lg p-3 transition-colors"
+                className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"
               >
                 <div className="flex items-start gap-3">
                   <div className="text-slate-400 mt-1">
@@ -109,6 +108,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       ? <i className="far fa-file-pdf"></i>
                       : <i className="far fa-file-alt"></i>}
                   </div>
+
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-200 truncate">
                       {doc.name}
@@ -117,14 +117,49 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {(doc.size / 1024).toFixed(1)} KB • {doc.chunks.length} chunks
                     </p>
                   </div>
+
                   <button
+                    type="button"
                     onClick={() => onRemove(doc.id)}
                     aria-label={`Remove ${doc.name}`}
-                    className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-slate-500 hover:text-red-400"
                   >
                     <i className="fas fa-times text-xs"></i>
                   </button>
                 </div>
+
+                <details className="mt-3 border-t border-slate-700 pt-2">
+                  <summary className="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+                    Preview extracted text
+                  </summary>
+
+                  <div className="mt-3 space-y-3">
+                    {doc.chunks.slice(0, 5).map((chunk, index) => (
+                      <div
+                        key={chunk.id}
+                        className="rounded-lg bg-slate-950/60 p-2"
+                      >
+                        <p className="text-[10px] font-semibold text-emerald-400 mb-1">
+                          {chunk.pageNumber !== undefined
+                            ? `PAGE ${chunk.pageNumber}`
+                            : 'TEXT DOCUMENT'}
+                          {' • '}
+                          CHUNK {index + 1}
+                        </p>
+
+                        <p className="text-xs text-slate-300 whitespace-pre-wrap break-words">
+                          {chunk.text}
+                        </p>
+                      </div>
+                    ))}
+
+                    {doc.chunks.length > 5 && (
+                      <p className="text-[10px] text-slate-500">
+                        Showing first 5 of {doc.chunks.length} chunks.
+                      </p>
+                    )}
+                  </div>
+                </details>
               </div>
             ))}
           </div>
@@ -134,13 +169,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 border-t border-slate-800">
         <div className="bg-slate-800/30 rounded-lg p-3">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               Engine Status
             </p>
           </div>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Using Gemini 3 Flash with In-Memory TF-IDF indexing for semantic retrieval.
+            Local document extraction and in-memory chunk indexing. AI answers require Gemini API configuration.
           </p>
         </div>
       </div>
