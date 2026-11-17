@@ -1,4 +1,3 @@
-
 import {
   getDocument,
   GlobalWorkerOptions,
@@ -25,12 +24,16 @@ export const extractPdfText = async (
     throw new Error("The PDF file is empty.");
   }
 
-  const loadingTask = getDocument({
-    data: new Uint8Array(await file.arrayBuffer()),
-    isEvalSupported: false,
-  });
+  let loadingTask: ReturnType<typeof getDocument> | undefined;
 
   try {
+    const data = new Uint8Array(await file.arrayBuffer());
+
+    loadingTask = getDocument({
+      data,
+      isEvalSupported: false,
+    });
+
     const pdf = await loadingTask.promise;
     const pages: ExtractedPdfPage[] = [];
 
@@ -89,7 +92,12 @@ export const extractPdfText = async (
       "Unable to read this PDF. It may be corrupted, invalid, or unsupported."
     );
   } finally {
-    await loadingTask.destroy();
+    if (loadingTask) {
+      try {
+        await loadingTask.destroy();
+      } catch {
+        // Cleanup failure should not override the extraction result.
+      }
+    }
   }
 };
-
