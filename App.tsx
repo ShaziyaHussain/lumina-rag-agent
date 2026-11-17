@@ -1,9 +1,14 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import { Document, ChatMessage } from './types';
-import { createChunks, retrieveRelevantChunks } from './utils/ragEngine';
+import {
+  createChunks,
+  createPageChunks,
+  retrieveRelevantChunks,
+} from './utils/ragEngine';
+import { extractPdfText } from './utils/pdfExtractor';
 import { getGeminiResponse } from './services/geminiService';
 
 const App: React.FC = () => {
@@ -11,39 +16,83 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(e.target.files ?? []);
+
+    if (files.length === 0) return;
 
     setIsProcessing(true);
+    setUploadErrors([]);
+
     const newDocs: Document[] = [];
+    const errors: string[] = [];
 
-    // Cast to File[] to fix 'unknown' type errors when iterating over files
-    const fileList = Array.from(files) as File[];
+    try {
+      for (const file of files) {
+        try {
+          const id = crypto.randomUUID();
+          const isPdf =
+            file.type === 'application/pdf' ||
+            file.name.toLowerCase().endsWith('.pdf');
 
-    for (const file of fileList) {
-      try {
-        const text = await file.text();
-        const id = Math.random().toString(36).substring(7);
-        const chunks = createChunks(text, id);
+          let text: string;
+          let chunks;
 
-        newDocs.push({
-          id,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          content: text,
-          processed: true,
-          chunks,
-        });
-      } catch (err) {
-        console.error(`Error processing file ${file.name}:`, err);
+          if (isPdf) {
+            const extractedPdf = await extractPdfText(file);
+
+            text = extractedPdf.text;
+            chunks = createPageChunks(extractedPdf.pages, id);
+          } else {
+            const isTextFile = /\.(txt|md)$/i.test(file.name);
+
+            if (!isTextFile) {
+              throw new Error('Unsupported file type. Upload TXT, MD, or PDF files.');
+            }
+
+            text = await file.text();
+
+            if (!text.trim()) {
+              throw new Error('The document contains no readable text.');
+            }
+
+            chunks = createChunks(text, id);
+          }
+
+          if (chunks.length === 0) {
+            throw new Error('No usable text chunks could be created.');
+          }
+
+          newDocs.push({
+            id,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            content: text,
+            processed: true,
+            chunks,
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : 'An unexpected error occurred.';
+
+          errors.push(`${file.name}: ${message}`);
+          console.error(`Error processing ${file.name}:`, error);
+        }
       }
-    }
 
-    setDocuments(prev => [...prev, ...newDocs]);
-    setIsProcessing(false);
+      setDocuments(prev => [...prev, ...newDocs]);
+      setUploadErrors(errors);
+    } finally {
+      setIsProcessing(false);
+      e.target.value = '';
+    }
   };
 
   const handleRemoveDoc = (id: string) => {
@@ -64,11 +113,13 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // 1. Retrieve relevant chunks
       const relevantChunks = retrieveRelevantChunks(text, documents, 6);
-      
-      // 2. Call Gemini Service
-      const response = await getGeminiResponse(text, messages, relevantChunks);
+
+      const response = await getGeminiResponse(
+        text,
+        messages,
+        relevantChunks
+      );
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -80,12 +131,16 @@ const App: React.FC = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
+      console.error('Error processing chat message:', error);
+
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I encountered an error while processing your request. Please ensure your API key is valid and try again.",
+        content:
+          "I'm sorry, I encountered an error while processing your request. Please check your API configuration and try again.",
         timestamp: Date.now(),
       };
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -94,15 +149,17 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-slate-950 overflow-hidden">
-      <Sidebar 
-        documents={documents} 
-        onUpload={handleFileUpload} 
+      <Sidebar
+        documents={documents}
+        onUpload={handleFileUpload}
         onRemove={handleRemoveDoc}
         isProcessing={isProcessing}
+        uploadErrors={uploadErrors}
       />
+
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <ChatInterface 
-          messages={messages} 
+        <ChatInterface
+          messages={messages}
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
         />
